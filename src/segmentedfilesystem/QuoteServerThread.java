@@ -3,6 +3,9 @@ package segmentedfilesystem;
 import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Vector;
 import java.net.Socket;
 import java.util.Stack;
 
@@ -23,18 +26,32 @@ public class QuoteServerThread extends Thread{
     public boolean foundFiles = false;
     public void run() {
         try {
-
-            while (!foundFiles) {
+            int upperLimit = Integer.MAX_VALUE;
+            while (stackSize < upperLimit) {
                 byte[] buf = new byte[256];
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 socket.receive(packet);
+                String packetNumber;
+                byte[] packetNumArr = Arrays.copyOfRange(buf,2,3);
+                packetNumber = (packetNumArr[0] + "" + packetNumArr[1]);
+                int realPacketNumber = Integer.parseInt(packetNumber);
                 packetStruct.push(buf);
                 stackSize++;
+
+                if(buf[0]%4 == 3){
+                    upperLimit = realPacketNumber;
+                }
             }
-            DatagramPacket[] packetArray = new DatagramPacket[stackSize];
+            ArrayList<byte[]> packetArray = new ArrayList<byte[]>();
             while(stackSize != 0){
                 if(packetStruct.peek()[0]%2==0){
-                    //packetArray[0] = packetStruct.pop();
+                    packetArray.add(0, packetStruct.pop());
+                } else {
+                    String packetNumber;
+                    byte[] packetNumArr = Arrays.copyOfRange(packetStruct.peek(),2,3);
+                    packetNumber = (packetNumArr[0] + "" + packetNumArr[1]);
+                    int realPacketNumber = Integer.parseInt(packetNumber);
+                    packetArray.add(realPacketNumber - 1, packetStruct.pop());
                 }
                 stackSize--;
             }
