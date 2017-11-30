@@ -1,28 +1,22 @@
 package segmentedfilesystem;
 
 import java.io.*;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Vector;
-import java.net.Socket;
 import java.util.Stack;
 
 //main thread class
-public class QuoteServerThread extends Thread{
-    public QuoteServerThread() throws IOException {
-        this("QuoteServer");
-    }
-    Stack<byte[]> packetStruct = new Stack<>();
+public class QuoteServerThread extends Thread {
     int stackSize = 0;
-    DatagramSocket socket = new DatagramSocket();
     BufferedReader in;
-
-
-    public QuoteServerThread(String name) throws IOException {
-            socket = new DatagramSocket(6014);
+    Stack<byte[]> packetStruct = new Stack<>();
+    DatagramSocket socket;
+    public QuoteServerThread(DatagramSocket socket) throws IOException, SocketException {
+        this.socket = socket;
     }
+
     public boolean foundFiles = false;
     public void run() {
         try {
@@ -38,16 +32,22 @@ public class QuoteServerThread extends Thread{
                     DatagramPacket packet = new DatagramPacket(buf, buf.length);
                     socket.receive(packet);
                     String packetNumber;
-                    byte[] packetNumArr = Arrays.copyOfRange(buf, 2, 3);
-                    if ((packetNumArr[1] == fileID) && fileID != -1) {
+                    byte[] packetNumArr = Arrays.copyOfRange(buf, 2, 4);
+                    System.out.println(packetNumArr[0]);
+                    //System.out.println(packetNumArr[1]);
+                    //System.out.println(packetNumArr[2]);
+                    //System.out.println(packetNumArr[3]);
+                    if ((fileID != -1)&& packetNumArr[1] == fileID) {
                         packetNumber = (packetNumArr[0] + "" + packetNumArr[1]);
                         int realPacketNumber = Integer.parseInt(packetNumber);
                         packetStruct.push(buf);
                         stackSize++;
                         if (buf[0] % 4 == 3) {
+                            System.out.println("found last: " + realPacketNumber);
                             upperLimit = realPacketNumber;
                         }
                     } else {
+                        System.out.println("found a data packet");
                         idList[byteArrCounter] = packetNumArr[1];
                         byteArrCounter++;
                     }

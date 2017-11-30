@@ -4,8 +4,8 @@ import java.net.*;
 
 public class QuoteServer {
     public static void main(String[] args) throws IOException {
+        DatagramSocket socket = new DatagramSocket();
         try {
-            DatagramSocket socket = new DatagramSocket();
 //            InetSocketAddress address = new InetSocketAddress("heartofgold.morris.umn.edu",6014);
 //            socket.bind(address);
             InetAddress address = InetAddress.getByName("heartofgold.morris.umn.edu");
@@ -16,7 +16,8 @@ public class QuoteServer {
         catch(Exception e){
             e.printStackTrace();
         }
-        new QuoteServerThread().start();
-        new QuoteServerThread().run();
+        QuoteServerThread quote = new QuoteServerThread(socket);
+        quote.start();
+        quote.run();
     }
 }
