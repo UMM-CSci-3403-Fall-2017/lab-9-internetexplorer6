@@ -1,21 +1,22 @@
 package segmentedfilesystem;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.SocketException;
+import java.net.*;
 
 public class QuoteServer {
     public static void main(String[] args) throws IOException {
         try {
-            DatagramSocket socket = new DatagramSocket(6014);
+            DatagramSocket socket = new DatagramSocket();
+//            InetSocketAddress address = new InetSocketAddress("heartofgold.morris.umn.edu",6014);
+//            socket.bind(address);
+            InetAddress address = InetAddress.getByName("heartofgold.morris.umn.edu");
             byte[] startbuffer = new byte[1024];
-            DatagramPacket emptyPacket = new DatagramPacket(startbuffer,1024);
+            DatagramPacket emptyPacket = new DatagramPacket(startbuffer,1024, address, 6014);
             socket.send(emptyPacket);
         }
-        catch(SocketException e){
+        catch(Exception e){
             e.printStackTrace();
         }
         new QuoteServerThread().start();
-
+        new QuoteServerThread().run();
     }
 }
