@@ -9,7 +9,7 @@ import java.util.Vector;
 import java.net.Socket;
 import java.util.Stack;
 
-
+//main thread class
 public class QuoteServerThread extends Thread{
     public QuoteServerThread() throws IOException {
         this("QuoteServer");
@@ -79,6 +79,15 @@ public class QuoteServerThread extends Thread{
                 }
                 fileID = idList[i];
                 files.add(fullFile);
+            }
+            for(int i = 0; i < 3; i++){
+                try(FileOutputStream fileOut = new FileOutputStream(".../aruba-test/etc/" + files.get(i)[1])) {
+                    fileOut.write(files.get(i));
+                    fileOut.close();
+                }
+//                for(int j = 0; j<files.get(i).length;j++){
+//                    System.out.write(files.get(i)[j]);
+//                }
             }
         } catch(IOException e){
             e.printStackTrace();
