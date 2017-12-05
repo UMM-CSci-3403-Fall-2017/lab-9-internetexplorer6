@@ -1,11 +1,10 @@
 package segmentedfilesystem;
 
+import com.sun.xml.internal.bind.v2.model.core.ID;
+
 import java.io.*;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Vector;
-import java.util.Stack;
+import java.util.*;
 import java.util.stream.IntStream;
 
 
@@ -19,6 +18,7 @@ public class QuoteServerThread extends Thread {
     DatagramSocket socket;
     int footCount = 0;
     int[] footInts = new int[3];
+    HashMap<Byte, Integer> IDandSizePair = new HashMap<Byte, Integer>();
     boolean threeFound = false;
     public QuoteServerThread(DatagramSocket socket) throws IOException, SocketException {
         this.socket = socket;
@@ -41,12 +41,14 @@ public class QuoteServerThread extends Thread {
                 if (buf[0] % 4 == 3) {
                     footInts[footCount] = buf[0];
                     footCount++;
+                    IDandSizePair.put(buf[1],(Integer.parseInt(buf[2] +"" + buf[3])));
                 }
                 packetStruct.push(buf);
                 stackSize++;
             }
 
             System.out.println("first loop done, stack-size: " + stackSize);
+            //System.out.println("the hashmap values" + IDandSizePair.)
             ArrayList<byte[]> file1 = new ArrayList<>();
             ArrayList<byte[]> file2 = new ArrayList<>();
             ArrayList<byte[]> file3 = new ArrayList<>();
