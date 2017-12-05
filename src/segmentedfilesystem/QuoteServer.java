@@ -18,6 +18,6 @@ public class QuoteServer {
         }
         QuoteServerThread quote = new QuoteServerThread(socket);
         quote.start();
-        quote.run();
+        //quote.run();
     }
 }

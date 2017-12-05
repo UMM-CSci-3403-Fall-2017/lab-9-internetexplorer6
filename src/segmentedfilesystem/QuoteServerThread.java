@@ -42,13 +42,17 @@ public class QuoteServerThread extends Thread {
                     footInts[footCount] = buf[0];
                     footCount++;
                 }
-
-
-
+                packetStruct.push(buf);
+                stackSize++;
             }
 
+            System.out.println("first loop done, stack-size: " + stackSize);
+            ArrayList<byte[]> file1 = new ArrayList<>();
+            ArrayList<byte[]> file2 = new ArrayList<>();
+            ArrayList<byte[]> file3 = new ArrayList<>();
+            for(int i = 0; i < 3; i++){
 
-
+            }
 
         } catch(IOException e){
             e.printStackTrace();
