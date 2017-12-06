@@ -19,6 +19,7 @@ public class QuoteServerThread extends Thread {
     int footCount = 0;
     int[] footInts = new int[3];
     HashMap<Byte, Integer> IDandSizePair = new HashMap<Byte, Integer>();
+    byte[] IDs = new byte[3];
     boolean threeFound = false;
     public QuoteServerThread(DatagramSocket socket) throws IOException, SocketException {
         this.socket = socket;
@@ -27,6 +28,7 @@ public class QuoteServerThread extends Thread {
     public boolean foundFiles = false;
     public void run() {
         try{
+            System.out.println();
 
             while(stackSize<=upperLimit) {
                 if(footCount==3){
@@ -38,27 +40,48 @@ public class QuoteServerThread extends Thread {
                 byte[] buf = new byte[1024];
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 socket.receive(packet);
+                byte[] packetNumArr = Arrays.copyOfRange(buf, 2, 4);
                 if (buf[0] % 4 == 3) {
                     footInts[footCount] = buf[0];
+                    int packetNumber = ((buf[2] & 0xff) << 8) | (buf[3] & 0xff);
+                    System.out.println("found last: " + packetNumber);
+                    IDandSizePair.put(buf[1],(packetNumber));
+                    IDs[footCount] = buf[1];
                     footCount++;
-                    IDandSizePair.put(buf[1],(Integer.parseInt(buf[2] +"" + buf[3])));
                 }
                 packetStruct.push(buf);
                 stackSize++;
             }
 
             System.out.println("first loop done, stack-size: " + stackSize);
-            //System.out.println("the hashmap values" + IDandSizePair.)
-            ArrayList<byte[]> file1 = new ArrayList<>();
-            ArrayList<byte[]> file2 = new ArrayList<>();
-            ArrayList<byte[]> file3 = new ArrayList<>();
-            for(int i = 0; i < 3; i++){
+            System.out.println("the hashmap values" + IDandSizePair.values());
+            System.out.println("The IDs: [" + IDs[0]+", "+IDs[1]+", "+IDs[2]+"]");
+            byte[][] file1 = new byte[IDandSizePair.get(IDs[0])+1][1024];
+            byte[][] file2 = new byte[IDandSizePair.get(IDs[1])+1][1024];
+            byte[][] file3 = new byte[IDandSizePair.get(IDs[2])+1][1024];
 
+
+            while(!packetStruct.empty()) {
+                //System.out.println("doin loop");
+                int packetNumber = ((packetStruct.peek()[2] & 0xff) << 8) | (packetStruct.peek()[3] & 0xff);
+                if (packetStruct.peek()[1] == IDs[0]) {
+                    file1[packetNumber] = packetStruct.pop();
+                    System.out.println("file 1 packet number: "+packetNumber);
+                }
+                else if (packetStruct.peek()[1] == IDs[1]) {
+                    file2[packetNumber] = packetStruct.pop();
+                    System.out.println("file 2 packet number: "+packetNumber);
+                }
+                else if (packetStruct.peek()[1] == IDs[2]) {
+                    file3[packetNumber] = packetStruct.pop();
+                    System.out.println("file 3 packet number: "+packetNumber);
+                }
             }
 
         } catch(IOException e){
             e.printStackTrace();
         }
+
     }
 
 
