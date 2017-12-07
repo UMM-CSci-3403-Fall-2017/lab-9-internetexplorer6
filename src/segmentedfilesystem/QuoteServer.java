@@ -16,8 +16,7 @@ public class QuoteServer {
         catch(Exception e){
             e.printStackTrace();
         }
-        QuoteServerThread quote = new QuoteServerThread(socket);
+        RetrievePacketThread quote = new RetrievePacketThread(socket);
         quote.start();
-        //quote.run();
     }
 }
