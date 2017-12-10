@@ -18,23 +18,34 @@ public class RetrievePacketThread extends Thread {
     DatagramSocket socket;
     int footCount = 0;
     int[] footInts = new int[3];
+
     HashMap<Byte, Integer> IDandSizePair = new HashMap<Byte, Integer>();
     HashMap<Byte, Integer> IDandNamePair = new HashMap<>();
+    Stack<byte[]> heads = new Stack<>();
+    private static byte[] head1 = new byte[1024];
+    private static byte[] head2 = new byte[1024];
+    private static byte[] head3 = new byte[1024];
+    private static String fileName1 = "";
+    private static String fileName2 = "";
+    private static String fileName3 = "";
+
     byte[] IDs = new byte[3];
     boolean threeFound = false;
+
     public RetrievePacketThread(DatagramSocket socket) throws IOException, SocketException {
         this.socket = socket;
     }
 
     public boolean foundFiles = false;
+
     public void run() {
-        try{
+        try {
             System.out.println();
 
-            while(stackSize<=upperLimit) {
-                if(footCount==3){
+            while (stackSize <= upperLimit) {
+                if (footCount == 3) {
                     upperLimit = 0;
-                    for(int i = 0; i < footCount; i++){
+                    for (int i = 0; i < footCount; i++) {
                         System.out.println("OUR FOOT INTS ARE: " + footInts[i]);
                         upperLimit += footInts[i];
                     }
@@ -50,15 +61,15 @@ public class RetrievePacketThread extends Thread {
                     footInts[footCount] = packetNumber;
                     //int packetNumber = ((buf[2] & 0xff) << 8) | (buf[3] & 0xff);
                     //System.out.println("found last: " + packetNumber);
-                    IDandSizePair.put(buf[1],(packetNumber+1));
+                    IDandSizePair.put(buf[1], (packetNumber + 1));
                     IDs[footCount] = buf[1];
                     footCount++;
                     packetStruct.push(buf);
                     stackSize++;
-                }
-                else if (buf[0] % 2 == 0) {
+                } else if (buf[0] % 2 == 0) {
                     //System.out.println("Found a header packet");
                     IDandNamePair.put(buf[1], (packetNumber));
+                    packetStruct.push(buf);
                     //System.out.println("Name of the file " + IDandNamePair.get(buf[1]));
                 } else {
                     System.out.println("pushing ID: " + buf[0] + ", and packet number: " + packetNumber);
@@ -66,45 +77,75 @@ public class RetrievePacketThread extends Thread {
                     stackSize++;
                 }
             }
+            System.out.println(heads.size());
 
             System.out.println("first loop done, stack-size: " + stackSize);
-            System.out.println("the hashmap values" + IDandSizePair.values());
-            System.out.println("The IDs: [" + IDs[0]+", "+IDs[1]+", "+IDs[2]+"]");
-            byte[][] file1Matrix = new byte[IDandSizePair.get(IDs[0])+1][];
-            byte[][] file2Matrix = new byte[IDandSizePair.get(IDs[1])+1][];
-            byte[][] file3Matrix = new byte[IDandSizePair.get(IDs[2])+1][];
+            System.out.println("the hashmap values: " + IDandSizePair.values());
+            System.out.println("the hashmap name values: " + IDandNamePair.values());
+            System.out.println("The IDs: [" + IDs[0] + ", " + IDs[1] + ", " + IDs[2] + "]");
+            //ArrayList<byte[]> file1 = new ArrayList<>();
+            //ArrayList<byte[]> file2 = new ArrayList<>();
+            //ArrayList<byte[]> file3 = new ArrayList<>();
+            byte[][] file1Matrix = new byte[IDandSizePair.get(IDs[0]) + 1][1024];
+            byte[][] file2Matrix = new byte[IDandSizePair.get(IDs[1]) + 1][1024];
+            byte[][] file3Matrix = new byte[IDandSizePair.get(IDs[2]) + 1][1024];
 
             int file1length = 1;
             int file2length = 1;
             int file3length = 1;
-            while(!packetStruct.empty()) {
+            while (!packetStruct.empty()) {
+
                 //System.out.println("doin loop");
                 int packetNumber = ((packetStruct.peek()[2] & 0xff) << 8) | (packetStruct.peek()[3] & 0xff);
                 //System.out.println(packetNumber);
                 if (packetStruct.peek()[1] == IDs[0]) {
-                    for(int p = 4; p < packetStruct.peek().length; p++){
-                        file1Matrix[packetNumber][p-4] = packetStruct.peek()[p];
-                        file1length++;
+                    if(packetStruct.peek()[0]%2==0){
+                        head1 = packetStruct.pop();
                     }
-                    packetStruct.pop();
-                    System.out.println("file 1 packet number: "+packetNumber);
-                }
-                else if (packetStruct.peek()[1] == IDs[1]) {
-                    for(int p = 4; p < packetStruct.peek().length; p++){
-                        file2Matrix[packetNumber][p-4] = packetStruct.peek()[p];
-                        file2length++;
+                    else {
+                        file1Matrix[packetNumber] = packetStruct.peek();
+                        /*for (int i = 0; i < packetStruct.peek().length; i++) {
+                            file1Matrix[packetNumber][i] = packetStruct.peek()[i];
+                            file1length++;
+                        }*/
+                        packetStruct.pop();
                     }
-                    packetStruct.pop();
-                    System.out.println("file 2 packet number: "+packetNumber);
-                }
-                else if (packetStruct.peek()[1] == IDs[2]) {
-                    for(int p = 4; p < packetStruct.peek().length; p++){
-                        file3Matrix[packetNumber][p-4] = packetStruct.peek()[p];
-                        file3length++;
+
+                    System.out.println("file 1 packet number: " + packetNumber);
+                } else if (packetStruct.peek()[1] == IDs[1]) {
+                    if(packetStruct.peek()[0]%2==0){
+                        head2 = packetStruct.pop();
                     }
-                    packetStruct.pop();
-                    System.out.println("file 3 packet number: "+packetNumber);
+                    else {
+                        file2Matrix[packetNumber] = packetStruct.peek();
+                        /*for (int i = 0; i < packetStruct.peek().length; i++) {
+                            file2Matrix[packetNumber][i] = packetStruct.peek()[i];
+                            file2length++;
+                        }*/
+                        packetStruct.pop();
+                    }
+
+                    System.out.println("file 2 packet number: " + packetNumber);
+                } else if (packetStruct.peek()[1] == IDs[2]) {
+                    if(packetStruct.peek()[0]%2==0){
+                        head3 = packetStruct.pop();
+                    }
+                    else {
+                        file3Matrix[packetNumber] = packetStruct.peek();
+                        /*for (int i = 0; i < packetStruct.peek().length; i++) {
+                            file3Matrix[packetNumber][i] = packetStruct.peek()[i];
+                            file3length++;
+                        }*/
+                        packetStruct.pop();
+                    }
+
+                    System.out.println("file 3 packet number: " + packetNumber);
                 }
+            }
+            System.out.println("the lovely filename status bytes are "+ head1[0]+", "+head2[0]+", "+head3[0]);
+            for (int i = 0; i < file3Matrix.length; i++) {
+                int packetNumber = ((file3Matrix[i][2] & 0xff) << 8) | (file3Matrix[i][3] & 0xff);
+                System.out.println(packetNumber);
             }
             //add counters for file length
             byte[] file1 = new byte[file1length];
@@ -112,23 +153,45 @@ public class RetrievePacketThread extends Thread {
             byte[] file3 = new byte[file3length];
 
             int file1ByteCounter = 0;
-            for(int i = 0; i < file1Matrix.length;i++){
-                for(int k = 0; k < file1Matrix[i].length;k++){
-                    file1[file1ByteCounter] = file1Matrix[i][k];
+            for (int i = 0; i < file1Matrix.length; i++) {
+                for (int k = 0; k < file1Matrix[i].length; k++) {
+                    //file1[file1ByteCounter] = file1Matrix[i][k];
                 }
             }
+            writeFileNames(head1,head2,head3);
 
-
-
-            try(FileOutputStream fos = new FileOutputStream("./" + IDandNamePair.get(IDs[0]))){
+            try (FileOutputStream fos = new FileOutputStream("./" + IDandNamePair.get(IDs[0]))) {
                 //fos.write(file1Matrix);
             }
 
-        } catch(IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
     }
+
+    public static void writeFileNames(byte[] h1, byte[] h2, byte[] h3){
+        for(int i = 2; i < h1.length;i++){
+            if(h1[i]==0){
+                break;
+            }
+            fileName1 = fileName1 + (char)h1[i];
+        }
+        for(int i = 2; i < h2.length;i++){
+            if(h2[i]==0){
+                break;
+            }
+            fileName2 = fileName2 + (char)h2[i];
+        }
+        for(int i = 2; i < h3.length;i++){
+            if(h3[i]==0){
+                break;
+            }
+            fileName3 = fileName3 + (char)h3[i];
+        }
+        System.out.println(fileName1+", "+fileName2+", "+fileName3);
+    }
+}
 
 
 
@@ -252,4 +315,4 @@ public class RetrievePacketThread extends Thread {
         }
     }*/
 
-}
+
