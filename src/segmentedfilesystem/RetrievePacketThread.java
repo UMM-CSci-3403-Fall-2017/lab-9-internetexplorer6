@@ -52,7 +52,7 @@ public class RetrievePacketThread extends Thread {
                     footCount++;
                 }
                 // do not push headers.
-                byte[] buf = new byte[1024];
+                byte[] buf = new byte[8004];
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 socket.receive(packet);
                 byte[] packetNumArr = Arrays.copyOfRange(buf, 2, 4);
@@ -86,9 +86,9 @@ public class RetrievePacketThread extends Thread {
             //ArrayList<byte[]> file1 = new ArrayList<>();
             //ArrayList<byte[]> file2 = new ArrayList<>();
             //ArrayList<byte[]> file3 = new ArrayList<>();
-            byte[][] file1Matrix = new byte[IDandSizePair.get(IDs[0]) + 1][1024];
-            byte[][] file2Matrix = new byte[IDandSizePair.get(IDs[1]) + 1][1024];
-            byte[][] file3Matrix = new byte[IDandSizePair.get(IDs[2]) + 1][1024];
+            byte[][] file1Matrix = new byte[IDandSizePair.get(IDs[0]) + 1][8004];
+            byte[][] file2Matrix = new byte[IDandSizePair.get(IDs[1]) + 1][8004];
+            byte[][] file3Matrix = new byte[IDandSizePair.get(IDs[2]) + 1][8004];
 
             int file1length = 1;
             int file2length = 1;
@@ -170,19 +170,29 @@ public class RetrievePacketThread extends Thread {
                 }
 
             }
-                FileOutputStream f2 = new FileOutputStream(fileName2);
+            f1.flush();
+            f1.close();
+                File binary = new File(fileName2);
+                FileOutputStream f2 = new FileOutputStream(binary);
             for (int i = 0; i < file2Matrix.length; i++) {
+                int zeroCount = 0;
                 for(int j = 4; j<file2Matrix[i].length;j++){
-                    if (file2Matrix[i][j]==0){
-                        break;
+                    if (file2Matrix[i][j]!=0){
+                        for(int p = 0; p <zeroCount; p++){
+                            f2.write((byte)0);
+                        }
+                        zeroCount = 0;
+                        f2.write(file2Matrix[i][j]);
                     }
-                    f2.write(file2Matrix[i][j]);
+                    else {
+                        zeroCount++;
+                    }
                 }
 
             }
             f2.flush();
             f2.close();
-                FileOutputStream f3 = new FileOutputStream(fileName3);
+            FileOutputStream f3 = new FileOutputStream(fileName3);
             for (int i = 0; i < file3Matrix.length; i++) {
                 for(int j = 4; j<file3Matrix[i].length;j++){
                     if (file3Matrix[i][j]==0){
@@ -191,6 +201,8 @@ public class RetrievePacketThread extends Thread {
                     f3.write(file3Matrix[i][j]);
                 }
             }
+            f3.flush();
+            f3.close();
 
 
         } catch (IOException e) {
