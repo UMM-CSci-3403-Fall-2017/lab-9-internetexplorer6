@@ -86,9 +86,9 @@ public class RetrievePacketThread extends Thread {
             //ArrayList<byte[]> file1 = new ArrayList<>();
             //ArrayList<byte[]> file2 = new ArrayList<>();
             //ArrayList<byte[]> file3 = new ArrayList<>();
-            byte[][] file1Matrix = new byte[IDandSizePair.get(IDs[0]) + 1][8004];
-            byte[][] file2Matrix = new byte[IDandSizePair.get(IDs[1]) + 1][8004];
-            byte[][] file3Matrix = new byte[IDandSizePair.get(IDs[2]) + 1][8004];
+            byte[][] file1Matrix = new byte[IDandSizePair.get(IDs[0]) + 1][1024];
+            byte[][] file2Matrix = new byte[IDandSizePair.get(IDs[1]) + 1][1024];
+            byte[][] file3Matrix = new byte[IDandSizePair.get(IDs[2]) + 1][1024];
 
             int file1length = 1;
             int file2length = 1;
