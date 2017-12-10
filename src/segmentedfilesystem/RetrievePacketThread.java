@@ -160,9 +160,38 @@ public class RetrievePacketThread extends Thread {
             }
             writeFileNames(head1,head2,head3);
 
-            try (FileOutputStream fos = new FileOutputStream("./" + IDandNamePair.get(IDs[0]))) {
-                //fos.write(file1Matrix);
+                FileOutputStream f1 = new FileOutputStream(fileName1);
+            for (int i = 0; i < file1Matrix.length; i++) {
+                for(int j = 4; j<file1Matrix[i].length;j++){
+                    if (file1Matrix[i][j]==0){
+                        break;
+                    }
+                    f1.write(file1Matrix[i][j]);
+                }
+
             }
+                FileOutputStream f2 = new FileOutputStream(fileName2);
+            for (int i = 0; i < file2Matrix.length; i++) {
+                for(int j = 4; j<file2Matrix[i].length;j++){
+                    if (file2Matrix[i][j]==0){
+                        break;
+                    }
+                    f2.write(file2Matrix[i][j]);
+                }
+
+            }
+            f2.flush();
+            f2.close();
+                FileOutputStream f3 = new FileOutputStream(fileName3);
+            for (int i = 0; i < file3Matrix.length; i++) {
+                for(int j = 4; j<file3Matrix[i].length;j++){
+                    if (file3Matrix[i][j]==0){
+                        break;
+                    }
+                    f3.write(file3Matrix[i][j]);
+                }
+            }
+
 
         } catch (IOException e) {
             e.printStackTrace();
