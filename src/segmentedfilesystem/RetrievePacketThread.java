@@ -11,209 +11,137 @@ import java.util.stream.IntStream;
 
 //main thread class
 public class RetrievePacketThread extends Thread {
+    // Initializes the size of the stack where all packets will initially be pushed to
     int stackSize = 0;
     int upperLimit = Integer.MAX_VALUE;
-    BufferedReader in;
     Stack<byte[]> packetStruct = new Stack<>();
     DatagramSocket socket;
     int footCount = 0;
     int[] footInts = new int[3];
 
+    // Hashmap data structure which stores a Byte (ID# of packet) as a key, and an integer (representing the
+    // number of packets in a file) as the key value.
     HashMap<Byte, Integer> IDandSizePair = new HashMap<Byte, Integer>();
-    HashMap<Byte, Integer> IDandNamePair = new HashMap<>();
-    Stack<byte[]> heads = new Stack<>();
-    private static byte[] head1 = new byte[1024];
-    private static byte[] head2 = new byte[1024];
-    private static byte[] head3 = new byte[1024];
+    //storage for header packets in byte arrays to be used for writing file names.
+    private static byte[] head1 = new byte[128];
+    private static byte[] head2 = new byte[128];
+    private static byte[] head3 = new byte[128];
+    //Initializing file names.
     private static String fileName1 = "";
     private static String fileName2 = "";
     private static String fileName3 = "";
 
+    // Array storing the IDs for each file.
     byte[] IDs = new byte[3];
-    boolean threeFound = false;
-
+    // socket reference created to be used in run() method.
     public RetrievePacketThread(DatagramSocket socket) throws IOException, SocketException {
         this.socket = socket;
     }
-
-    public boolean foundFiles = false;
-
+    // Main operation of RetrievePacketThread.
     public void run() {
         try {
-            System.out.println();
-
+            // pushing all packets onto stack, and writing IDs and associated file sizes
+            // onto hash table.
             while (stackSize <= upperLimit) {
                 if (footCount == 3) {
+                    // Because upperLimit is initially INTEGER.MAX_VALUE, it needs to be changed eventually
+                    // This happens here. When we get all three footer packets, it sets upperLimit to the
+                    // amount of all packets we will receive. It does this by adding their packet numbers together
                     upperLimit = 0;
                     for (int i = 0; i < footCount; i++) {
-                        System.out.println("OUR FOOT INTS ARE: " + footInts[i]);
                         upperLimit += footInts[i];
                     }
                     footCount++;
                 }
-                // do not push headers.
-                byte[] buf = new byte[8004];
+                // setting the packet buffer to the maximum packet size and receiving it from the packet
+                byte[] buf = new byte[1028];
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 socket.receive(packet);
-                byte[] packetNumArr = Arrays.copyOfRange(buf, 2, 4);
                 int packetNumber = ((buf[2] & 0xff) << 8) | (buf[3] & 0xff);
                 if (buf[0] % 4 == 3) {
+                    // conditional for footer packet; adds it to footInts, stores it in the map (so that we can know all three file IDs)
+                    // and pushes it to the packet stack
                     footInts[footCount] = packetNumber;
-                    //int packetNumber = ((buf[2] & 0xff) << 8) | (buf[3] & 0xff);
-                    //System.out.println("found last: " + packetNumber);
                     IDandSizePair.put(buf[1], (packetNumber + 1));
                     IDs[footCount] = buf[1];
                     footCount++;
                     packetStruct.push(buf);
                     stackSize++;
                 } else if (buf[0] % 2 == 0) {
-                    //System.out.println("Found a header packet");
-                    IDandNamePair.put(buf[1], (packetNumber));
+                    // Because we don't want to deal with headers until we know all of the file IDs,
+                    // for now those are just pushed to the stack
                     packetStruct.push(buf);
-                    //System.out.println("Name of the file " + IDandNamePair.get(buf[1]));
+                    stackSize++;
                 } else {
-                    System.out.println("pushing ID: " + buf[0] + ", and packet number: " + packetNumber);
+                    // This is for normal data packets, we simply push them to the stack
                     packetStruct.push(buf);
                     stackSize++;
                 }
             }
-            System.out.println(heads.size());
 
-            System.out.println("first loop done, stack-size: " + stackSize);
-            System.out.println("the hashmap values: " + IDandSizePair.values());
-            System.out.println("the hashmap name values: " + IDandNamePair.values());
-            System.out.println("The IDs: [" + IDs[0] + ", " + IDs[1] + ", " + IDs[2] + "]");
-            //ArrayList<byte[]> file1 = new ArrayList<>();
-            //ArrayList<byte[]> file2 = new ArrayList<>();
-            //ArrayList<byte[]> file3 = new ArrayList<>();
-            byte[][] file1Matrix = new byte[IDandSizePair.get(IDs[0]) + 1][1024];
-            byte[][] file2Matrix = new byte[IDandSizePair.get(IDs[1]) + 1][1024];
-            byte[][] file3Matrix = new byte[IDandSizePair.get(IDs[2]) + 1][1024];
+            //The following are matrices for each file in which, each row is the number of packets in the associated file
+            // (determined by the ID), and the column is associated with the max size of each packet.
+            byte[][] file1Matrix = new byte[IDandSizePair.get(IDs[0]) + 1][1028];
+            byte[][] file2Matrix = new byte[IDandSizePair.get(IDs[1]) + 1][1028];
+            byte[][] file3Matrix = new byte[IDandSizePair.get(IDs[2]) + 1][1028];
 
-            int file1length = 1;
-            int file2length = 1;
-            int file3length = 1;
+            // The following loop traverses through each packet on the stack and pops each value into its associated
+            // data packet, by ID.  If the item is a header packet the previously initiated header packets for the
+            // associated file are set to the value of the packet on the stack.  The result is 3 seperate header packets
+            // for the files, and 3 file matrices, one for each file.
             while (!packetStruct.empty()) {
 
-                //System.out.println("doin loop");
                 int packetNumber = ((packetStruct.peek()[2] & 0xff) << 8) | (packetStruct.peek()[3] & 0xff);
-                //System.out.println(packetNumber);
                 if (packetStruct.peek()[1] == IDs[0]) {
                     if(packetStruct.peek()[0]%2==0){
                         head1 = packetStruct.pop();
                     }
                     else {
-                        file1Matrix[packetNumber] = packetStruct.peek();
-                        /*for (int i = 0; i < packetStruct.peek().length; i++) {
-                            file1Matrix[packetNumber][i] = packetStruct.peek()[i];
-                            file1length++;
-                        }*/
-                        packetStruct.pop();
+                        file1Matrix[packetNumber] = packetStruct.pop();
                     }
-
-                    System.out.println("file 1 packet number: " + packetNumber);
                 } else if (packetStruct.peek()[1] == IDs[1]) {
                     if(packetStruct.peek()[0]%2==0){
                         head2 = packetStruct.pop();
                     }
                     else {
-                        file2Matrix[packetNumber] = packetStruct.peek();
-                        /*for (int i = 0; i < packetStruct.peek().length; i++) {
-                            file2Matrix[packetNumber][i] = packetStruct.peek()[i];
-                            file2length++;
-                        }*/
-                        packetStruct.pop();
+                        file2Matrix[packetNumber] = packetStruct.pop();
                     }
-
-                    System.out.println("file 2 packet number: " + packetNumber);
                 } else if (packetStruct.peek()[1] == IDs[2]) {
                     if(packetStruct.peek()[0]%2==0){
                         head3 = packetStruct.pop();
                     }
                     else {
-                        file3Matrix[packetNumber] = packetStruct.peek();
-                        /*for (int i = 0; i < packetStruct.peek().length; i++) {
-                            file3Matrix[packetNumber][i] = packetStruct.peek()[i];
-                            file3length++;
-                        }*/
-                        packetStruct.pop();
+                        file3Matrix[packetNumber] = packetStruct.pop();
                     }
 
-                    System.out.println("file 3 packet number: " + packetNumber);
                 }
             }
-            System.out.println("the lovely filename status bytes are "+ head1[0]+", "+head2[0]+", "+head3[0]);
-            for (int i = 0; i < file3Matrix.length; i++) {
-                int packetNumber = ((file3Matrix[i][2] & 0xff) << 8) | (file3Matrix[i][3] & 0xff);
-                System.out.println(packetNumber);
-            }
-            //add counters for file length
-            byte[] file1 = new byte[file1length];
-            byte[] file2 = new byte[file2length];
-            byte[] file3 = new byte[file3length];
-
-            int file1ByteCounter = 0;
-            for (int i = 0; i < file1Matrix.length; i++) {
-                for (int k = 0; k < file1Matrix[i].length; k++) {
-                    //file1[file1ByteCounter] = file1Matrix[i][k];
-                }
-            }
+            // write names for files from given header packets.
             writeFileNames(head1,head2,head3);
 
-                FileOutputStream f1 = new FileOutputStream(fileName1);
-            for (int i = 0; i < file1Matrix.length; i++) {
-                for(int j = 4; j<file1Matrix[i].length;j++){
-                    if (file1Matrix[i][j]==0){
-                        break;
-                    }
-                    f1.write(file1Matrix[i][j]);
-                }
-
-            }
-            f1.flush();
-            f1.close();
-                File binary = new File(fileName2);
-                FileOutputStream f2 = new FileOutputStream(binary);
-            for (int i = 0; i < file2Matrix.length; i++) {
-                int zeroCount = 0;
-                for(int j = 4; j<file2Matrix[i].length;j++){
-                    if (file2Matrix[i][j]!=0){
-                        for(int p = 0; p <zeroCount; p++){
-                            f2.write((byte)0);
-                        }
-                        zeroCount = 0;
-                        f2.write(file2Matrix[i][j]);
-                    }
-                    else {
-                        zeroCount++;
-                    }
-                }
-
-            }
-            f2.flush();
-            f2.close();
+            // OutputStreams initialized for writing files.
+            FileOutputStream f1 = new FileOutputStream(fileName1);
+            FileOutputStream f2 = new FileOutputStream(fileName2);
             FileOutputStream f3 = new FileOutputStream(fileName3);
-            for (int i = 0; i < file3Matrix.length; i++) {
-                for(int j = 4; j<file3Matrix[i].length;j++){
-                    if (file3Matrix[i][j]==0){
-                        break;
-                    }
-                    f3.write(file3Matrix[i][j]);
-                }
-            }
-            f3.flush();
-            f3.close();
-
-
+            //write files to project directory.
+            writeFiles(f1,file1Matrix);
+            writeFiles(f2,file2Matrix);
+            writeFiles(f3,file3Matrix);
+            // System out to confirm the files were successfully retrieved.
+            System.out.println("Retrieved three files: "+fileName1 + ", " + fileName2 + ", " + fileName3);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
     }
 
+    // Takes the three header packets and writes the data portion to a string (which is why
+    // the loops begin at 2)
     public static void writeFileNames(byte[] h1, byte[] h2, byte[] h3){
         for(int i = 2; i < h1.length;i++){
             if(h1[i]==0){
+                // There were excess zeroes at the end of the data portion of the packet,
+                // and this way simply breaks out of the loop when it encounters them.
                 break;
             }
             fileName1 = fileName1 + (char)h1[i];
@@ -230,130 +158,40 @@ public class RetrievePacketThread extends Thread {
             }
             fileName3 = fileName3 + (char)h3[i];
         }
-        System.out.println(fileName1+", "+fileName2+", "+fileName3);
+    }
+    // This writes the file matrices to the output stream.
+    public static void writeFiles(FileOutputStream file, byte[][] fileMatrix){
+        try {
+
+            for (int i = 0; i < fileMatrix.length;i++) {
+                // We needed a way to differentiate the zeroes within the data we were writing,
+                // from excess ones at the end of the packet.
+                // This continuously counts every zero it sees, but only writes them if there are non-zeroes afterwards.
+                int zeroCount = 0;
+                for (int j = 4; j < fileMatrix[i].length; j++) {
+                    if (fileMatrix[i][j] != 0) {
+                        for (int z = 0; z < zeroCount; z++) {
+                            file.write((byte)0);
+                        }
+                        zeroCount = 0;
+                        file.write(fileMatrix[i][j]);
+                    }
+                    else{
+                        zeroCount++;
+                    }
+                }
+            }
+            file.flush();
+            file.close();
+        }
+        catch(IOException e){
+            e.printStackTrace();
+        }
     }
 }
 
 
 
-    /*int stackSize = 0;
-    BufferedReader in;
-    Stack<byte[]> packetStruct = new Stack<>();
-    DatagramSocket socket;
-    public QuoteServerThread(DatagramSocket socket) throws IOException, SocketException {
-        this.socket = socket;
-    }
 
-    public boolean foundFiles = false;
-    public void run() {
-        try {
-            int upperLimit = Integer.MAX_VALUE;
-            byte[] idList = new byte[3];
-            int byteArrCounter = 0;
-            int fileID = -1;
-            ArrayList<byte[]> files = new ArrayList<>();
-            //this for loop handles each file
-            for(int i = 1; i < 4; i++) {
-                stackSize = 0;
-                //this while loop handles a single file with multiple packets
-                boolean firstRecieved = true;
-                while (stackSize <= upperLimit) {
-
-                    byte[] buf = new byte[1024];
-                    DatagramPacket packet = new DatagramPacket(buf, buf.length);
-                    socket.receive(packet);
-                    String packetNumber;
-                    byte[] packetNumArr = Arrays.copyOfRange(buf, 2, 4);
-                    System.out.println("Datagram Packet ID: "+ buf[1]);
-
-                    //System.out.println(packetNumArr[0]);
-                    //System.out.println(packetNumArr[1]);
-                    //System.out.println(packetNumArr[2]);
-                    //System.out.println(packetNumArr[3]);
-                    if ((!firstRecieved)&&fileID==buf[1]) {
-                        System.out.println("we made it woo");
-                        packetNumber = (packetNumArr[0] + "" + packetNumArr[1]);
-                        int realPacketNumber = Integer.parseInt(packetNumber);
-                        packetStruct.push(buf);
-                        stackSize++;
-                        if (buf[0] % 4 == 3) {
-                            System.out.println("found last: " + realPacketNumber);
-                            upperLimit = realPacketNumber;
-                        }
-                    } else {
-                        System.out.println("found a data packet");
-                        boolean alreadyFound = false;
-                        for(int k = 0; k < idList.length;k++){
-                            if(idList[k] == buf[1]){
-                                alreadyFound = true;
-                            }
-                        }
-                        if(!alreadyFound) {
-                            idList[byteArrCounter] = buf[1];
-                            byteArrCounter++;
-                        }
-                    }
-                    if(firstRecieved){
-                        System.out.println("First recieved added");
-                        packetNumber = (packetNumArr[0] + "" + packetNumArr[1]);
-                        int realPacketNumber = Integer.parseInt(packetNumber);
-                        packetStruct.push(buf);
-                        stackSize++;
-                        if (buf[0] % 4 == 3) {
-                            System.out.println("found last: " + realPacketNumber);
-                            upperLimit = realPacketNumber;
-                        }
-                        firstRecieved = false;
-                    }
-                    fileID = buf[1];
-                }
-                ArrayList<byte[]> packetArray = new ArrayList<byte[]>();
-                int packetCount = stackSize + 1;
-                for(int k = 0; k < packetCount; k++){
-                    packetArray.add(new byte[0]);
-                }
-                System.out.println("length: " + packetArray.size());
-                while(stackSize != 0){
-                    if(packetStruct.peek()[0]%2==0){
-                        packetArray.add(0, packetStruct.pop());
-                    } else {
-                        String packetNumber;
-                        byte[] packetNumArr = Arrays.copyOfRange(packetStruct.peek(),2,4);
-                        packetNumber = (packetNumArr[0] + "" + packetNumArr[1]);
-                        System.out.println("Packet Number: " + packetNumber);
-                        int realPacketNumber = Integer.parseInt(packetNumber);
-                        System.out.println("Packet Number: " + realPacketNumber);
-                        packetArray.add(realPacketNumber, packetStruct.pop());
-
-                    }
-                    stackSize--;
-                }
-                //make 3 array to store each files bytes
-                byte[] fullFile = new byte[packetCount*1024];
-                int incrementer = 0;
-                for(int j = 0; j < packetCount; j++){
-
-                    for(int x = 0; x < 1024; x++){
-                        fullFile[incrementer] = packetArray.get(j)[x];
-                        incrementer++;
-                    }
-
-                }
-                //fileID = idList[i];
-                files.add(fullFile);
-            }
-            for(int i = 0; i < 3; i++){
-                try(FileOutputStream fileOut = new FileOutputStream(".../aruba-test/etc/" + files.get(i)[1])) {
-                    fileOut.write(files.get(i));
-                    fileOut.close();
-                }
-//                for(int j = 0; j<files.get(i).length;j++){
-//                    System.out.write(files.get(i)[j]);
-//                }
-            }
-        } catch(IOException e){
-            e.printStackTrace();
-        }
-    }*/
 
 
